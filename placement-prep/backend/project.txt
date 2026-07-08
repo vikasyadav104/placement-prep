@@ -1,0 +1,97 @@
+Project structure — created models, routes, controllers, config folders, plus server.js, .env, .gitignore files inside backend.
+Express server (server.js) — Express itself is not a server; it's a framework that sits on top of Node's built-in HTTP capabilities and makes it much easier to create a server, define routes, and handle requests/responses (compared to writing raw Node http module code). We set up a basic Express app with cors() and express.json() middleware, a test route, and app.listen() to actually start the server.
+Confirmed server is alive — visited localhost:5000, saw our test message.
+MongoDB Atlas — since local MongoDB only runs on our laptop and won't be reachable once deployed, we use Atlas (cloud-hosted MongoDB) so both our laptop and the deployed backend can reach the same database.
+Created Atlas cluster → got connection string → pasted into .env as MONGO_URI.
+Wrote config/db.js — this file contains the actual mongoose.connect() logic that reads MONGO_URI from .env and connects to Atlas. .env only stores the string; db.js is what uses it.
+Called connectDB() in server.js — confirmed "MongoDB connected successfully" in terminal.
+Installed bcrypt and jsonwebtoken:
+
+bcrypt → turns a plain-text password into a random-looking hashed string (one-way — can't be reversed back to the original password, only compared)
+jsonwebtoken → creates and verifies JWT tokens (used for login sessions)
+
+
+
+Continuing from there:
+
+Built models/User.js — schema with name, email, password, leetcodeUsername, codeforcesUsername. Added a pre-save middleware that automatically hashes the password with bcrypt right before saving — so plain-text passwords never touch the database. Also added a comparePassword method to check a login attempt's password against the stored hash.
+Built controllers/authController.js — signup (creates user, hashes password automatically via the model middleware, returns a JWT) and login (verifies email + password, returns a fresh JWT). Also added getProfile to test protected routes later.
+Built routes/authRoutes.js — connected /signup, /login, /profile URLs to their respective controller functions. Mounted this router in server.js under the prefix /api/auth.
+Tested signup + login in Postman — both work, confirmed real data saved in Atlas (users collection), with hashed passwords.
+Built middleware/authMiddleware.js (protect) — checks for a Bearer token in the request header, verifies it's valid using jwt.verify(), fetches the matching user from the database, and attaches it as req.user. This lets any later function in that same request (like getProfile) know exactly who's making the request — without needing to log in again per-request.
+Tested /profile route — confirmed it blocks requests without a valid token (401), and returns the correct user profile when a valid token is provided.
+
+
+Installed multer and pdf-parse — multer handles file uploads (Express alone can't parse multipart/form-data, the format files are sent in), pdf-parse extracts raw text out of a PDF buffer.
+Built models/Resume.js — schema linking a resume to a specific user via user: { type: ObjectId, ref: 'User' }, plus fileName and extractedText. We only store the extracted text, not the raw PDF binary, since MongoDB isn't meant for large binary storage.
+Built middleware/uploadMiddleware.js — configured Multer's diskStorage (where/how to save uploaded files temporarily), and a fileFilter to only accept PDFs. Had to fix the filter later since Postman sometimes sends mimetype application/octet-stream instead of application/pdf — so we now check either the mimetype or the file extension (.pdf).
+Built controllers/resumeController.js (uploadResume) — reads the uploaded file from disk (fs.readFileSync), extracts text using pdf-parse, saves it to MongoDB linked to req.user._id (available because protect middleware ran first), then deletes the temporary file from disk since we already extracted what we need.
+Built routes/resumeRoutes.js — the upload route chains three middleware/functions in order: protect (auth check) → upload.single('resume') (Multer, attaches req.file) → uploadResume (our controller, uses both req.user and req.file). Mounted in server.js under /api/resume.
+Tested in Postman — hit a pdf-parse version mismatch (newer installed version had a different API), fixed by pinning pdf-parse@1.1.1. After that, upload + parsing worked successfully — confirmed real extracted text from your actual resume.
+
+So right now, fully working: ✅ Auth, ✅ Protected routes, ✅ Resume upload + text extraction.
+
+
+Picking up exactly where that document ends — here's everything we did after resume upload + text extraction:
+Codeforces Integration
+
+Installed axios — lets our backend make HTTP requests to external APIs (Codeforces, LeetCode).
+Added codeforcesStats (Object) to User.js — separate from codeforcesUsername (just the identifier); this field stores the actual fetched/processed data, so we don't hit the external API every time.
+Built controllers/codeforcesController.js (fetchCodeforcesStats) — calls Codeforces's public user.status API, loops through every submission, counts unique solved problems (using a Set to avoid double-counting), and builds a topicCount object (e.g., { dp: 28, greedy: 191 }).
+Added your own idea: topicStruggleCount — tracks how many attempts each problem took before being solved; if more than 3 attempts, we count that as a "struggle" for that problem's topics. Gives a second signal beyond just solve count.
+Built routes/codeforcesRoutes.js, mounted under /api/codeforces.
+Built a profile-update route (PUT /api/auth/profile) so you could set codeforcesUsername/leetcodeUsername on your account.
+Tested successfully — real data pulled: 348 solved problems, full topic breakdown, saved into your user document.
+
+LeetCode Integration
+
+Learned LeetCode has no official API, but exposes an unofficial public GraphQL endpoint (https://leetcode.com/graphql) that its own website uses internally.
+Added leetcodeStats (Object) to User.js.
+Built controllers/leetcodeController.js (fetchLeetcodeStats) — sends two GraphQL queries in parallel (using Promise.all): one for difficulty-wise solved counts, one for topic-wise (tagProblemCounts, split into fundamental/intermediate/advanced tiers, merged into one flat object).
+Built routes/leetcodeRoutes.js, mounted under /api/leetcode.
+Tested successfully — 306 solved problems, full difficulty + topic breakdown.
+Discussed a key design decision: LeetCode's API doesn't expose per-attempt data like Codeforces, so we can't measure "struggle" the same way. Agreed to only measure practice volume (not "weakness"), and phrase things neutrally (e.g., "lower solved count" instead of "you're weak at this").
+Briefly discussed and rejected scraping interviewer LinkedIn profiles — violates ToS, privacy concerns, fragile to build. Agreed to skip this entirely.
+
+Scoring Logic (in progress right now)
+
+Built utils/topicMapping.js — maps each platform's differently-named tags (e.g., dp vs "Dynamic Programming") into one shared list of unified topics.
+Built utils/scoreCalculator.js (calculateTopicScores) — merges Codeforces + LeetCode counts per unified topic into one combined number.
+Built controllers/scoreController.js (getTopicScores) — calls the merge function, then sorts topics by combined count (ascending) to find the 3 lowest-practiced topics, labeled neutrally as lowExposureTopics (not "weak topics").
+Built routes/scoreRoutes.js, mounted under /api/score.
+
+
+now add in what we did next to end point
+
+Here's everything that happened after the scoring logic section in that document, bringing it fully up to date:
+
+Roadmap Generation (Gemini API)
+Got a Gemini API key from Google AI Studio — went through some confusion since Google recently changed key formats (new keys now look like AQ.Ab... "Auth keys" instead of the older AIza... format).
+Installed @google/genai (the current recommended SDK, after starting with the older deprecated @google/generative-ai).
+Built models/Roadmap.js — simple schema linking a roadmap to a user, storing generated content.
+Built controllers/roadmapController.js (generateRoadmap) — gathers combined topic scores + latest resume text, builds a detailed prompt, calls Gemini, saves the result.
+Hit and fixed several real bugs along the way:
+GoogleGenAI defaulting to Vertex AI-style auth instead of API key auth → fixed with vertexai: false
+dotenv.config() running after route imports in server.js → meant process.env.GEMINI_API_KEY was undefined when the Gemini client got created at import time. Fixed by moving dotenv.config() to the very first lines of server.js, before any requires that depend on env vars.
+Gemini rate limits/model availability issues → switched from gemini-2.0-flash to gemini-2.5-flash, and added a callGeminiWithRetry helper that retries on temporary UNAVAILABLE/RESOURCE_EXHAUSTED errors.
+First version returned one long text blob — redesigned the prompt to force structured JSON output ({ summary, weeks: [...] }) instead, so the frontend can later render clean cards rather than a wall of text.
+Built routes/roadmapRoutes.js, mounted under /api/roadmap.
+Tested successfully — Gemini generated a genuinely personalized, encouraging 4-week roadmap referencing your actual low-exposure topics and resume content.
+Mock Interview — Question Generation
+Discussed and scoped the full voice-mock-interview vision (speak questions aloud, listen to answers, record, analyze pace/pauses, give feedback) — agreed this is mostly frontend work (Web Speech API) and should be built in stages, starting with backend question generation.
+Decided against adding "aptitude" questions (belongs to a separate, non-verbal, timed-test feature) — kept scope to resume + DSA + behavioral, matching real SDE interview structure.
+Built controllers/interviewController.js (generateInterviewQuestions) — prompts Gemini for exactly 12 questions (4 resume-based, 5 DSA, 3 behavioral), verbally-askable, returned as structured JSON.
+Built routes/interviewRoutes.js, mounted under /api/interview.
+Tested successfully — got highly specific, resume-aware questions (referencing your actual projects like Medi-Bridge and TopCorner) plus DSA questions matched to your lower-exposure topics.
+Mock Interview — Session Feedback & History
+Designed the "interview progress" feature: per-question feedback (not just one overall summary) — showing the user's actual answer, constructive feedback, and a suggested strong answer for comparison, plus tracking sessions over time.
+Built models/InterviewSession.js — stores an array of questions (each with transcript, timing, feedback, suggested answer) plus one overallFeedback field, per user, per session.
+Built controllers/interviewSessionController.js:
+submitInterviewSession — takes a full interview transcript (questions + answers + timing), sends it to Gemini in one batch call, gets back per-question feedback + suggested answers + overall summary, merges everything together, and saves it as a session.
+getInterviewHistory — fetches all past sessions for the logged-in user, newest first (powers a future "progress over time" view).
+Added both routes (/submit-session, /history) to routes/interviewRoutes.js.
+Tested both successfully with sample data — Gemini gave honest, specific feedback (even correctly flagging a placeholder test answer as low-effort rather than praising it blindly).
+Where things stand now
+Fully complete backend: Auth → Protected routes → Resume upload/parsing → Codeforces integration → LeetCode integration → Scoring logic → Roadmap generation → Mock interview (questions + feedback + history).
+
+Not yet started: Frontend (React) — this is the entire remaining piece of the project, including the actual voice capture/playback for the mock interview (Web Speech API), which depends on the frontend existing first.
