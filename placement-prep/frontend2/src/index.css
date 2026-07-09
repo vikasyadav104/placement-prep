@@ -1,0 +1,101 @@
+/* src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f4f7f6;
+  color: #333;
+  line-height: 1.6;
+}
+
+/* A nice, modern card style we can use anywhere */
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* A beautiful, premium button style */
+.btn-primary {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: #45a049;
+  transform: translateY(-2px);
+}
+/* --- PREMIUM UI UPGRADES --- */
+
+/* 1. The Glowing AI Core (Replaces the Brain Image) */
+.glowing-orb {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(134, 239, 172, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+  border-radius: 50%;
+  filter: blur(50px);
+  z-index: -1; /* Puts it behind the text */
+  animation: breathe 5s infinite alternate ease-in-out;
+}
+
+@keyframes breathe {
+  0% { transform: translateX(-50%) scale(0.8); opacity: 0.5; }
+  100% { transform: translateX(-50%) scale(1.2); opacity: 1; }
+}
+
+/* 2. Gradient Text for that futuristic look */
+.text-gradient {
+  background: linear-gradient(90deg, #86efac 0%, #3b82f6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+
+/* 3. Frosted Glass Navbar */
+.glass-nav {
+  position: sticky;
+  top: 0;
+  background: rgba(9, 9, 11, 0.7);
+  backdrop-filter: blur(12px); /* This makes the background blurry! */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  z-index: 100;
+}
+
+/* 4. Premium Feature Cards */
+.feature-card {
+  background: rgba(24, 24, 27, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 30px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(134, 239, 172, 0.3);
+  box-shadow: 0 10px 30px -10px rgba(134, 239, 172, 0.1);
+}
+.tool-card:hover {
+  transform: translateY(-5px);
+  background-color: #111111 !important;
+  border-color: #444444 !important;
+}

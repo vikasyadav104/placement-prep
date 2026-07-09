@@ -26,72 +26,54 @@ const callGeminiWithRetry = async (prompt, retries = 2) => {
 const submitInterviewSession = async (req, res) => {
   try {
     const { questions } = req.body;
-    // Expected format: [{ question, type, userAnswerTranscript, timeTakenSeconds }, ...]
 
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
       return res.status(400).json({ message: 'Questions and answers are required' });
     }
 
-    // Build a prompt with the full interview transcript
-    const transcriptText = questions
-      .map((q, i) => `Q${i + 1} (${q.type}): ${q.question}\nAnswer: ${q.userAnswerTranscript}\nTime taken: ${q.timeTakenSeconds} seconds`)
-      .join('\n\n');
-
+    // Use the exact 'questions' variable that came from the frontend
     const prompt = `
-You are an experienced SDE interview coach reviewing a mock interview transcript.
+      You are an expert technical interviewer evaluating a candidate for an SDE role.
+      Here are the questions asked and the candidate's transcribed audio answers:
+      ${JSON.stringify(questions)}
 
-Here is the full transcript:
-${transcriptText}
-
-For EACH question, provide:
-1. Constructive feedback on their answer (encouraging tone, specific and actionable, not just "good job")
-2. A suggested strong answer they could compare against
-
-Also provide one overall feedback summary for the entire interview (2-4 sentences, covering communication clarity, pacing, and general impression).
-
-Respond ONLY with valid JSON, no other text, in EXACTLY this structure:
-{
-  "overallFeedback": "summary text here",
-  "questionFeedback": [
-    {
-      "questionNumber": 1,
-      "feedback": "specific feedback text",
-      "suggestedAnswer": "example strong answer text"
-    }
-  ]
-}
-
-Do not include any text outside the JSON object - no markdown code fences.
-`;
+      Evaluate their performance. Return the response ONLY as a valid JSON object with this exact structure (no markdown tags):
+      {
+        "overallScore": 85,
+        "overallFeedback": "A 2-sentence summary of their performance.",
+        "detailedAnalysis": [
+          {
+            "question": "The question asked",
+            "userAnswer": "The candidate's exact answer",
+            "critique": "What they did wrong or missed",
+            "idealResponse": "How they SHOULD have answered it (what to say instead)",
+            "score": 8
+          }
+        ]
+      }
+    `;
 
     let responseText = await callGeminiWithRetry(prompt);
+    
+    // Safely strip any markdown backticks if Gemini includes them
     responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const feedbackData = JSON.parse(responseText);
+    
+    const evaluationJSON = JSON.parse(responseText);
 
-    // Merge feedback back into each question
-    const enrichedQuestions = questions.map((q, i) => {
-      const matchingFeedback = feedbackData.questionFeedback.find(
-        (f) => f.questionNumber === i + 1
-      );
-      return {
-        ...q,
-        feedback: matchingFeedback ? matchingFeedback.feedback : '',
-        suggestedAnswer: matchingFeedback ? matchingFeedback.suggestedAnswer : '',
-      };
-    });
-
-    // Save the complete session
+    // Save the newly structured data to MongoDB
     const session = await InterviewSession.create({
       user: req.user._id,
-      questions: enrichedQuestions,
-      overallFeedback: feedbackData.overallFeedback,
+      overallScore: evaluationJSON.overallScore,
+      overallFeedback: evaluationJSON.overallFeedback,
+      detailedAnalysis: evaluationJSON.detailedAnalysis,
     });
 
     res.status(201).json({
       message: 'Interview session evaluated successfully',
-      session,
+      session: session // Sending the saved DB object back to the React UI
     });
   } catch (error) {
+    console.error("🔥 SUBMIT SESSION CRASH:", error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

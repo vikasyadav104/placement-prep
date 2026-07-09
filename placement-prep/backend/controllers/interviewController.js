@@ -74,7 +74,10 @@ Rules:
       message: 'Interview questions generated successfully',
       questions: questionsData.questions,
     });
-  } catch (error) {
+} catch (error) {
+    // ADD THIS LINE RIGHT HERE:
+    console.error("🔥 BACKEND CRASH REASON:", error); 
+    
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
