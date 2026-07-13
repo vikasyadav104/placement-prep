@@ -12,7 +12,8 @@ const leetcodeRoutes = require('./routes/leetcodeRoutes');
 const scoreRoutes = require('./routes/scoreRoutes');
 const roadmapRoutes = require('./routes/roadmapRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
-
+const userRoutes = require('./routes/userRoutes');
+const aiInterviewRoutes = require('./routes/aiInterviewRoutes');
 console.log('Gemini key loaded:', process.env.GEMINI_API_KEY ? 'Yes' : 'No');
 connectDB(); // i use here mongodb atlas
 
@@ -28,15 +29,18 @@ app.use('/api/leetcode', leetcodeRoutes);
 app.use('/api/score', scoreRoutes);
 app.use('/api/roadmap', roadmapRoutes);
 app.use('/api/interview', interviewRoutes);
-
-
+app.use('/api/user', userRoutes);
+app.use('/api/ai-interview', aiInterviewRoutes);
 
 app.get('/', (req, res) => {
   res.send('Placement Prep Assistant API is running');
 });
 
 const PORT = process.env.PORT || 5000;
-
+app.use((err, req, res, next) => {
+  console.error("🔥 CRITICAL SERVER ERROR:", err.stack);
+  res.status(500).json({ message: "Something broke on the server!" });
+});
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

@@ -17,7 +17,8 @@ export default function Register() {
 
     try {
       // 1. Tell the mail carrier to send Name, Email, and Password to the backend
-      await api.post('/auth/register', { name, email, password });
+// ...to this!
+    await api.post('/auth/signup', { name, email, password });
       
       // 2. If the backend says "OK", show a success message
       alert("Account created! Now please log in.");

@@ -19,9 +19,11 @@ export default function Resume() {
   const [isUploading, setIsUploading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
-  
-  // NEW: State to show the choices after analysis is done
   const [showOptions, setShowOptions] = useState(false); 
+  
+  // Hover states for the buttons
+  const [hoverInterview, setHoverInterview] = useState(false);
+  const [hoverRoadmap, setHoverRoadmap] = useState(false);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -62,7 +64,6 @@ export default function Resume() {
     }
   };
 
-  // The "Labor Illusion" Timer
   useEffect(() => {
     if (!showModal) return;
 
@@ -72,10 +73,7 @@ export default function Resume() {
           return prev + 1;
         } else {
           clearInterval(timer);
-          // NEW: Instead of navigating immediately, show the selection options!
-          setTimeout(() => {
-            setShowOptions(true);
-          }, 800);
+          setTimeout(() => setShowOptions(true), 800);
           return prev;
         }
       });
@@ -98,7 +96,7 @@ export default function Resume() {
       position: 'relative'
     }}>
       
-      {/* --- THE MAGIC MODAL OVERLAY --- */}
+      {/* THE MODAL OVERLAY */}
       {showModal && (
         <div style={{
           position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 50,
@@ -111,7 +109,6 @@ export default function Resume() {
           }}>
             
             {!showOptions ? (
-              // STEP 1: SHOW THE LOADING ANIMATION
               <>
                 {stepIndex < ANALYSIS_STEPS.length - 1 ? (
                   <Loader2 size={48} color="#86efac" style={{ animation: 'spin 2s linear infinite', margin: '0 auto 20px auto' }} />
@@ -130,7 +127,6 @@ export default function Resume() {
                 </div>
               </>
             ) : (
-              // STEP 2: SHOW THE CHOICES ONCE DONE
               <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
                 <CheckCircle size={56} color="#86efac" style={{ margin: '0 auto 20px auto' }} />
                 <h2 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '10px' }}>Analysis Complete</h2>
@@ -138,15 +134,24 @@ export default function Resume() {
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                   
-                  {/* Option 1: Interview */}
-                  <button onClick={() => navigate('/interview')} style={optionCardStyle}>
+                  {/* OPTION 1: FIXED ROUTE HERE */}
+                  <button 
+                    onClick={() => navigate('/interview/active')} 
+                    onMouseEnter={() => setHoverInterview(true)}
+                    onMouseLeave={() => setHoverInterview(false)}
+                    style={{...optionCardStyle, backgroundColor: hoverInterview ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)'}}
+                  >
                     <Video size={32} color="#ffffff" style={{ marginBottom: '15px' }} />
                     <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#fff', marginBottom: '8px' }}>Mock Interview</h3>
                     <p style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>Test your skills with an AI voice interviewer.</p>
                   </button>
 
-                  {/* Option 2: Roadmap */}
-                  <button onClick={() => navigate('/roadmap')} style={optionCardStyle}>
+                  <button 
+                    onClick={() => navigate('/roadmap')} 
+                    onMouseEnter={() => setHoverRoadmap(true)}
+                    onMouseLeave={() => setHoverRoadmap(false)}
+                    style={{...optionCardStyle, backgroundColor: hoverRoadmap ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)'}}
+                  >
                     <Map size={32} color="#ffffff" style={{ marginBottom: '15px' }} />
                     <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#fff', marginBottom: '8px' }}>Study Roadmap</h3>
                     <p style={{ color: '#888', fontSize: '13px', lineHeight: '1.4' }}>Generate a 4-week custom prep schedule.</p>
@@ -164,7 +169,7 @@ export default function Resume() {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
-      {/* --- STANDARD UPLOAD PAGE --- */}
+      {/* STANDARD UPLOAD PAGE */}
       <div style={{ width: '100%', maxWidth: '600px', filter: showModal ? 'blur(4px)' : 'none', transition: 'filter 0.3s' }}>
         <button onClick={() => navigate('/dashboard')} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '30px', fontSize: '15px' }}>
           <ArrowLeft size={18} /> Back to Dashboard
@@ -202,9 +207,7 @@ export default function Resume() {
   );
 }
 
-// Styling for the new selection cards
 const optionCardStyle = {
-  backgroundColor: 'rgba(255, 255, 255, 0.05)',
   border: '1px solid #333',
   borderRadius: '12px',
   padding: '25px 20px',

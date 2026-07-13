@@ -1,262 +1,274 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Video, Map, Code, ChevronRight, Zap, UploadCloud, History, Target, TrendingDown, Activity, CheckCircle2, Lock, AlertCircle } from 'lucide-react';
+import RatingGraph from '../components/RatingGraph';
 import api from '../services/api';
-import { UploadCloud, FileText, Loader2, CheckCircle, Video, Map, ArrowRight, ShieldCheck } from 'lucide-react';
-
-const ANALYSIS_STEPS = [
-  "Scanning resume text for core competencies...",
-  "Extracting tech stack and project architecture...",
-  "Cross-referencing with top-tier SDE requirements...",
-  "Crafting personalized DSA & Behavioral simulations...",
-  "Profile Calibrated."
-];
+import RecentContests from '../components/RecentContests';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [file, setFile] = useState(null);
-  const [error, setError] = useState('');
-  const [isDragActive, setIsDragActive] = useState(false);
   
-  const [isUploading, setIsUploading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [stepIndex, setStepIndex] = useState(0);
-  const [showOptions, setShowOptions] = useState(false);
+  // --- STATE MANAGEMENT ---
+  const [hasResume, setHasResume] = useState(false); 
+  const [leetcodeId, setLeetcodeId] = useState('');
+  const [codeforcesId, setCodeforcesId] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [syncError, setSyncError] = useState('');
+  const [isSynced, setIsSynced] = useState(false);
 
-  // --- DRAG AND DROP HANDLERS ---
-  const handleDragOver = (e) => {
+  const handleConnectIDs = async (e) => {
     e.preventDefault();
-    setIsDragActive(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragActive(false);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragActive(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && droppedFile.type === 'application/pdf') {
-      setFile(droppedFile);
-      setError('');
-    } else {
-      setError('Please drop a valid PDF file.');
-    }
-  };
-
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0];
-    if (selectedFile && selectedFile.type === 'application/pdf') {
-      setFile(selectedFile);
-      setError('');
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!file) return;
-    setIsUploading(true);
-    setError('');
-
-    const formData = new FormData();
-    formData.append('resume', file);
-
+    setIsConnecting(true);
+    setSyncError(''); 
+    
     try {
-      // Hit your backend
-      await api.post('/resume/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await api.post('/user/sync-profiles', { leetcodeId, codeforcesId });
       
-      setIsUploading(false);
-      setShowModal(true);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to upload resume. Please try again.');
-      setIsUploading(false);
+      // BULLETPROOF CHECK: Manually force an error if the status isn't 200 OK
+      if (response.status && response.status !== 200) {
+        throw new Error(response.data?.message || 'Verification failed.');
+      }
+      
+      // If we made it here, the backend CONFIRMED the IDs are real.
+      setIsSynced(true);
+      alert('Success! Telemetry Link Established.');
+      
+    } catch (error) {
+      console.error("🔥 Sync Failed:", error);
+      
+      // Extract the exact error message from the backend (or fallback to a default message)
+      const errorMessage = error.response?.data?.message || error.message || 'Verification failed. Please check your IDs.';
+      
+      setSyncError(errorMessage);
+      setIsSynced(false); // STRICTLY lock the roadmap!
+    } finally {
+      setIsConnecting(false);
     }
   };
+  const [userData, setUserData] = useState(null);
 
-  // --- THE "LABOR ILLUSION" TIMER ---
   useEffect(() => {
-    if (!showModal) return;
-    const timer = setInterval(() => {
-      setStepIndex((prev) => {
-        if (prev < ANALYSIS_STEPS.length - 1) {
-          return prev + 1;
-        } else {
-          clearInterval(timer);
-          setTimeout(() => setShowOptions(true), 800);
-          return prev;
-        }
-      });
-    }, 1200);
-    return () => clearInterval(timer);
-  }, [showModal]);
+    const fetchProfile = async () => {
+      try {
+        const response = await api.get('/user/profile'); 
+        setUserData(response.data);
+      } catch (error) {
+        console.error("Failed to load profile", error);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   return (
     <div style={{
       minHeight: '100vh', backgroundColor: '#000000',
-      backgroundImage: 'radial-gradient(circle at 50% 0%, #1a1a24 0%, #000000 70%)',
+      backgroundImage: 'radial-gradient(circle at 50% 0%, #161622 0%, #000000 65%)',
       color: '#ffffff', fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center'
+      padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center'
     }}>
-
-      {/* --- THE MAGIC MODAL & STRATEGIC FORK --- */}
-      {showModal && (
-        <div style={{
-          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 50,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(12px)'
-        }}>
-          <div style={{
-            backgroundColor: 'rgba(20, 20, 25, 0.95)', border: '1px solid #333',
-            borderRadius: '24px', padding: '50px', width: '90%', maxWidth: showOptions ? '700px' : '500px',
-            textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-          }}>
-            
-            {!showOptions ? (
-              // PHASE 1: SCANNING
-              <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-                {stepIndex < ANALYSIS_STEPS.length - 1 ? (
-                  <Loader2 size={56} color="#86efac" style={{ animation: 'spin 2s linear infinite', margin: '0 auto 24px auto' }} />
-                ) : (
-                  <ShieldCheck size={56} color="#86efac" style={{ margin: '0 auto 24px auto' }} />
-                )}
-                <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '12px' }}>Analyzing Profile Profile</h2>
-                <p style={{ color: stepIndex === ANALYSIS_STEPS.length - 1 ? '#86efac' : '#888', fontSize: '16px', transition: 'color 0.3s' }}>
-                  {ANALYSIS_STEPS[stepIndex]}
-                </p>
-                <div style={{ width: '100%', height: '4px', backgroundColor: '#222', borderRadius: '2px', marginTop: '40px', overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%', backgroundColor: '#86efac', transition: 'width 1.2s ease-in-out',
-                    width: `${((stepIndex + 1) / ANALYSIS_STEPS.length) * 100}%`,
-                    boxShadow: '0 0 10px rgba(134, 239, 172, 0.5)'
-                  }} />
-                </div>
-              </div>
-            ) : (
-              // PHASE 2: THE FORK
-              <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-                <ShieldCheck size={56} color="#86efac" style={{ margin: '0 auto 20px auto' }} />
-                <h2 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '10px' }}>Profile Calibrated</h2>
-                <p style={{ color: '#888', marginBottom: '40px', fontSize: '16px' }}>Your technical stack has been mapped. Choose your next move.</p>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                  
-                  {/* Option A: Enter the Crucible */}
-                  <button onClick={() => navigate('/interview')} style={primaryCardStyle}>
-                    <div style={{ backgroundColor: 'rgba(134, 239, 172, 0.1)', padding: '16px', borderRadius: '50%', marginBottom: '20px' }}>
-                      <Video size={32} color="#86efac" />
-                    </div>
-                    <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#fff', marginBottom: '10px' }}>Enter the Crucible</h3>
-                    <p style={{ color: '#aaa', fontSize: '14px', lineHeight: '1.5', marginBottom: '20px' }}>
-                      Face a rigorous, AI-driven video interview simulating top-tier tech companies.
-                    </p>
-                    <div style={{ color: '#86efac', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      Start Interview <ArrowRight size={16} />
-                    </div>
-                  </button>
-
-                  {/* Option B: Tactical Planning */}
-                  <button onClick={() => navigate('/roadmap')} style={secondaryCardStyle}>
-                    <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', padding: '16px', borderRadius: '50%', marginBottom: '20px' }}>
-                      <Map size={32} color="#fff" />
-                    </div>
-                    <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#fff', marginBottom: '10px' }}>Tactical Planning</h3>
-                    <p style={{ color: '#888', fontSize: '14px', lineHeight: '1.5', marginBottom: '20px' }}>
-                      Skip the interview for now and generate a customized multi-week preparation schedule.
-                    </p>
-                    <div style={{ color: '#fff', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      Configure Roadmap <ArrowRight size={16} />
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
+      <div style={{ width: '100%', maxWidth: '1200px' }}>
+        
+        {/* --- HEADER --- */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '25px' }}>
+          <div>
+            <h1 style={{ fontSize: '32px', fontWeight: '800', margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>
+             Vikas Yadav
+            </h1>
+            <p style={{ color: '#666', fontSize: '15px', margin: 0, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              SDE Candidate Profile
+            </p>
           </div>
         </div>
-      )}
 
-      {/* --- THE COMMAND CENTER UI --- */}
-      <div style={{ width: '100%', maxWidth: '700px', textAlign: 'center', filter: showModal ? 'blur(8px)' : 'none', transition: 'filter 0.4s' }}>
-        
-        <h1 style={{ fontSize: '48px', fontWeight: '800', marginBottom: '20px', letterSpacing: '-1px' }}>
-          Calibrate Your <span style={{ color: '#86efac' }}>Engineering Profile</span>
-        </h1>
-        <p style={{ color: '#888', fontSize: '18px', lineHeight: '1.6', marginBottom: '50px', padding: '0 20px' }}>
-          Upload your resume to instantly map your technical stack, identify algorithmic blind spots, and simulate high-pressure SDE interviews.
-        </p>
+        {/* --- TOP ROW: GRAPH & HISTORY --- */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '24px', animation: 'fadeIn 0.5s ease-out' }}>
+       <div style={{ marginTop: '40px', maxWidth: '800px' }}>
+        <RatingGraph history={userData?.interviewHistory} />
+      </div>
 
-        {error && (
-          <div style={{ color: '#fca5a5', backgroundColor: 'rgba(220, 38, 38, 0.1)', border: '1px solid #dc2626', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>
-            {error}
+          <div className="glass-card" style={{ ...glassStyle, padding: '20px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+    
+    {/* Left Side: Your Rating Graph */}
+
+    {/* Right Side: Your NEW Dynamic Recent Contests List */}
+    <div style={{ flex: 1 }}>
+      <RecentContests history={userData?.interviewHistory} />
+    </div>
+    
+  </div>
           </div>
-        )}
+        </div>
 
-        {/* DRAG AND DROP ZONE */}
-        <div 
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          style={{
-            border: `2px dashed ${isDragActive ? '#86efac' : file ? '#333' : '#333'}`,
-            backgroundColor: isDragActive ? 'rgba(134, 239, 172, 0.05)' : file ? 'rgba(255, 255, 255, 0.02)' : 'rgba(10, 10, 10, 0.5)',
-            borderRadius: '24px', padding: '60px 20px', cursor: 'pointer', transition: 'all 0.3s ease',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
-          }}
-          onClick={() => document.getElementById('file-upload').click()}
-        >
-          <input id="file-upload" type="file" accept="application/pdf" onChange={handleFileChange} style={{ display: 'none' }} />
-          
-          {file ? (
-            <>
-              <FileText size={64} color="#86efac" style={{ marginBottom: '20px' }} />
-              <h3 style={{ fontSize: '20px', color: '#fff', marginBottom: '8px' }}>{file.name}</h3>
-              <p style={{ color: '#86efac', fontSize: '14px', fontWeight: '500' }}>Ready for Calibration</p>
-            </>
+        {/* --- MIDDLE ROW: THE RESUME BANNER --- */}
+        <div style={{ animation: 'fadeIn 0.6s ease-out', marginBottom: '24px' }}>
+          {!hasResume ? (
+            <div style={{ ...premiumVaultStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '30px 40px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                <div style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '16px', borderRadius: '14px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                  <UploadCloud size={32} color="#3b82f6" />
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <h2 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '6px' }}>Initialize AI Sandbox</h2>
+                  <p style={{ color: '#999', fontSize: '14px', margin: 0, maxWidth: '500px', lineHeight: '1.5' }}>
+                    Upload your resume to map your tech stack. The AI will parse your projects and generate ranked technical questions to test your limits.
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => navigate('/resume')} style={{ ...primaryBtn, backgroundColor: '#3b82f6', color: '#fff', padding: '14px 28px', whiteSpace: 'nowrap' }}>
+                Upload PDF Resume <ChevronRight size={18} />
+              </button>
+            </div>
           ) : (
-            <>
-              <UploadCloud size={64} color={isDragActive ? '#86efac' : '#555'} style={{ marginBottom: '20px', transition: 'color 0.3s' }} />
-              <h3 style={{ fontSize: '22px', color: '#fff', marginBottom: '8px', fontWeight: '600' }}>Drag & Drop your Resume</h3>
-              <p style={{ color: '#666', fontSize: '15px' }}>or click to browse (PDF only)</p>
-            </>
+            <div style={{ ...premiumVaultStyle, borderColor: '#86efac', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '30px 40px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                <div style={{ backgroundColor: 'rgba(134, 239, 172, 0.1)', padding: '16px', borderRadius: '14px', border: '1px solid rgba(134, 239, 172, 0.2)' }}>
+                  <Video size={32} color="#86efac" />
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <h2 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '6px' }}>Crucible Ready</h2>
+                  <p style={{ color: '#aaa', fontSize: '14px', margin: 0, maxWidth: '500px', lineHeight: '1.5' }}>
+                    Your parameters are loaded. Start a ranked interview to update your MMR and calibrate your communication skills.
+                  </p>
+                </div>
+              </div>
+<button onClick={() => navigate('/interview/active')} style={{ ...primaryBtn, padding: '14px 28px', whiteSpace: 'nowrap' }}>
+  Start Ranked Interview <ChevronRight size={18} />
+</button>
+            </div>
           )}
         </div>
 
-        {/* INITIATE BUTTON */}
-        <button 
-          onClick={handleUpload}
-          disabled={isUploading || !file}
-          style={{
-            width: '100%', padding: '18px', marginTop: '30px',
-            backgroundColor: (isUploading || !file) ? '#222' : '#ffffff',
-            color: (isUploading || !file) ? '#666' : '#000000',
-            border: 'none', borderRadius: '12px', fontSize: '18px', fontWeight: '700',
-            cursor: (isUploading || !file) ? 'not-allowed' : 'pointer',
-            transition: 'all 0.3s',
-            boxShadow: file && !isUploading ? '0 10px 25px -5px rgba(255, 255, 255, 0.1)' : 'none'
-          }}
-        >
-          {isUploading ? 'Initializing System...' : 'Initiate Calibration sequence'}
-        </button>
+        {/* --- BOTTOM ROW: DSA & ROADMAP ENGINE --- */}
+        <div className="glass-card" style={{ ...glassStyle, padding: '30px', animation: 'fadeIn 0.7s ease-out' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '25px' }}>
+            <div style={{ backgroundColor: 'rgba(134, 239, 172, 0.1)', padding: '8px', borderRadius: '8px' }}>
+              <Code size={20} color="#86efac" />
+            </div>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>Algorithmic Analytics & Routing</h2>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
+            
+            {/* Left Side: Profile Sync & Telemetry */}
+            <div>
+              <p style={{ color: '#888', fontSize: '14px', lineHeight: '1.5', marginBottom: '20px' }}>
+                Sync your profiles. The engine will scrape your recent Interviews ratings, successful problem resolutions, and failed optimization attempts to build your telemetry profile.
+              </p>
+
+              {/* CONDITIONAL UI: Form vs Synced State */}
+              {!isSynced ? (
+                <form onSubmit={handleConnectIDs} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '25px' }}>
+                  
+                  {/* NEW: THE VISUAL ERROR RENDERER */}
+                  {syncError && (
+                    <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', color: '#fca5a5', padding: '12px', borderRadius: '8px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <AlertCircle size={16} /> {syncError}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <input type="text" placeholder="LeetCode ID" required value={leetcodeId} onChange={(e) => setLeetcodeId(e.target.value)} style={inputStyle} />
+                    <input type="text" placeholder="Codeforces ID" required value={codeforcesId} onChange={(e) => setCodeforcesId(e.target.value)} style={inputStyle} />
+                  </div>
+                  <button type="submit" disabled={isConnecting} style={{
+                    ...secondaryBtn, backgroundColor: isConnecting ? '#222' : 'rgba(255, 255, 255, 0.05)', color: isConnecting ? '#666' : '#fff'
+                  }}>
+                    {isConnecting ? 'Analyzing Telemetry...' : 'Sync Active Profiles'} <Zap size={14} />
+                  </button>
+                </form>
+              ) : (
+                <div style={{ backgroundColor: 'rgba(34, 197, 94, 0.05)', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: '12px', padding: '16px', marginBottom: '25px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#22c55e', fontWeight: '700', marginBottom: '12px' }}>
+                    <CheckCircle2 size={18} /> Telemetry Link Established
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>LeetCode</div>
+                      <div style={{ fontSize: '14px', color: '#fff', fontWeight: '600' }}>{leetcodeId}</div>
+                    </div>
+                    <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Codeforces</div>
+                      <div style={{ fontSize: '14px', color: '#fff', fontWeight: '600' }}>{codeforcesId}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Mini mock stats */}
+              <div style={{ display: 'flex', gap: '15px', opacity: isSynced ? 1 : 0.4, transition: 'opacity 0.3s' }}>
+                <StatBadge icon={<TrendingDown size={14} color="#ef4444" />} label="Recent TLEs" value={isSynced ? "12" : "--"} />
+                <StatBadge icon={<Activity size={14} color="#3b82f6" />} label="Avg Rating" value={isSynced ? "1420" : "----"} />
+              </div>
+            </div>
+
+            {/* Right Side: Dynamic Roadmap Generation */}
+            <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', padding: '24px', borderRadius: '12px', border: '1px solid #222', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                <Target size={20} color={isSynced ? "#a855f7" : "#555"} />
+                <h3 style={{ fontSize: '18px', fontWeight: '700', margin: 0, color: isSynced ? '#fff' : '#666' }}>Dynamic Progression Track</h3>
+              </div>
+              <p style={{ color: isSynced ? '#aaa' : '#555', fontSize: '14px', lineHeight: '1.6', marginBottom: '20px', transition: 'color 0.3s' }}>
+                Based on your synced telemetry, the AI will isolate your weakest patterns and generate a multi-week study roadmap to repair your logic gaps.
+              </p>
+              
+              <button 
+                onClick={() => navigate('/roadmap')}
+                disabled={!isSynced}
+                style={{ 
+                  ...primaryBtn, 
+                  backgroundColor: isSynced ? '#ffffff' : 'rgba(255,255,255,0.05)', 
+                  color: isSynced ? '#000000' : '#444', 
+                  width: '100%', 
+                  justifyContent: 'center', 
+                  padding: '14px',
+                  cursor: isSynced ? 'pointer' : 'not-allowed',
+                  boxShadow: isSynced ? '0 4px 12px rgba(255, 255, 255, 0.1)' : 'none',
+                  border: isSynced ? 'none' : '1px solid #333'
+                }}
+              >
+                {isSynced ? 'Generate AI Roadmap' : 'Locked: Sync Profiles First'}
+                {isSynced ? <Map size={18} style={{ marginLeft: '4px' }} /> : <Lock size={16} style={{ marginLeft: '4px' }} />}
+              </button>
+            </div>
+
+          </div>
+        </div>
 
       </div>
-
-      <style>{`
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
     </div>
   );
 }
 
-const primaryCardStyle = {
-  backgroundColor: 'rgba(15, 15, 20, 0.9)', border: '1px solid rgba(134, 239, 172, 0.3)',
-  borderRadius: '16px', padding: '30px 20px', cursor: 'pointer', display: 'flex',
-  flexDirection: 'column', alignItems: 'center', textAlign: 'center', transition: 'all 0.2s',
-  boxShadow: '0 10px 30px -10px rgba(134, 239, 172, 0.1)'
-};
+// Sub-components
+const StatBadge = ({ icon, label, value }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '8px 12px', borderRadius: '6px', border: '1px solid #222' }}>
+    {icon}
+    <span style={{ fontSize: '12px', color: '#888' }}>{label}:</span>
+    <span style={{ fontSize: '13px', fontWeight: '700', color: '#fff' }}>{value}</span>
+  </div>
+);
 
-const secondaryCardStyle = {
-  backgroundColor: 'rgba(255, 255, 255, 0.03)', border: '1px solid #333',
-  borderRadius: '16px', padding: '30px 20px', cursor: 'pointer', display: 'flex',
-  flexDirection: 'column', alignItems: 'center', textAlign: 'center', transition: 'all 0.2s'
-};
+const HistoryRow = ({ session, score, delta, color, date }) => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', backgroundColor: 'rgba(0,0,0,0.4)', border: '1px solid #222', borderRadius: '8px' }}>
+    <div>
+      <div style={{ fontSize: '14px', fontWeight: '600' }}>Session #{session}</div>
+      <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>{date}</div>
+    </div>
+    <div style={{ textAlign: 'right' }}>
+      <div style={{ fontSize: '15px', fontWeight: '800' }}>{score}/100</div>
+      <div style={{ fontSize: '12px', fontWeight: '700', color: delta.startsWith('+') ? '#22c55e' : '#ef4444' }}>
+        {delta}
+      </div>
+    </div>
+  </div>
+);
+
+// CSS Objects
+const glassStyle = { backgroundColor: 'rgba(12, 12, 16, 0.8)', border: '1px solid #1c1c24', borderRadius: '16px', backdropFilter: 'blur(12px)' };
+
+const premiumVaultStyle = { position: 'relative', overflow: 'hidden', backgroundColor: 'rgba(10, 10, 15, 0.9)', border: '1px solid #222', borderRadius: '16px' };
+
+const inputStyle = { width: '100%', padding: '12px 14px', backgroundColor: 'rgba(0,0,0,0.4)', border: '1px solid #222', borderRadius: '8px', color: '#fff', fontSize: '13px', outline: 'none' };
+const primaryBtn = { borderRadius: '8px', fontSize: '15px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' };
+const secondaryBtn = { width: '100%', padding: '12px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', cursor: 'pointer', transition: 'all 0.2s' };

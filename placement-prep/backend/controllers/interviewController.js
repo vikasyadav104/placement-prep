@@ -1,5 +1,6 @@
 const { GoogleGenAI } = require('@google/genai');
 const Resume = require('../models/Resume');
+const User = require('../models/User'); // Added User model for saving scores
 const calculateTopicScores = require('../utils/scoreCalculator');
 
 const ai = new GoogleGenAI({ vertexai: false, apiKey: process.env.GEMINI_API_KEY });
@@ -23,6 +24,7 @@ const callGeminiWithRetry = async (prompt, retries = 2) => {
   }
 };
 
+// 1. Generate Questions (Your existing code)
 const generateInterviewQuestions = async (req, res) => {
   try {
     const codeforcesTopicCount = req.user.codeforcesStats?.topicCount || {};
@@ -46,7 +48,6 @@ Generate exactly 12 interview questions for this student, mixing:
 - 4 questions specifically about projects/experience mentioned in their resume
 - 5 DSA (data structures & algorithms) questions, prioritizing topics with lower solved counts
 
-
 Respond ONLY with valid JSON, no other text, in EXACTLY this structure:
 {
   "questions": [
@@ -57,7 +58,6 @@ Respond ONLY with valid JSON, no other text, in EXACTLY this structure:
     }
   ]
 }
-
 Rules:
 - "type" must be one of: "resume", "dsa", "behavioral"
 - Questions should be realistic, specific, and conversational - as if a real interviewer is asking them out loud
@@ -74,12 +74,69 @@ Rules:
       message: 'Interview questions generated successfully',
       questions: questionsData.questions,
     });
-} catch (error) {
-    // ADD THIS LINE RIGHT HERE:
-    console.error("🔥 BACKEND CRASH REASON:", error); 
-    
+  } catch (error) {
+    console.error("🔥 BACKEND CRASH REASON (Generate):", error); 
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-module.exports = { generateInterviewQuestions };
+// 2. NEW: Save Score and Update Rating (Codeforces Style)
+const saveInterviewScore = async (req, res) => {
+  try {
+    const { finalScore } = req.body; // Ensure your frontend sends this out of 10
+    const user = await User.findById(req.user._id);
+
+    const currentRating = user.interviewRating || 1200;
+    
+    // Calculate the previous score average
+    let previousAverage = 0;
+    if (user.interviewHistory && user.interviewHistory.length > 0) {
+      const totalScore = user.interviewHistory.reduce((sum, session) => sum + session.score, 0);
+      previousAverage = totalScore / user.interviewHistory.length;
+    } else {
+      // Baseline for the very first interview (assuming scores are out of 10)
+      previousAverage = 5; 
+    }
+
+    // Apply the custom rating formula
+    let ratingChange = 0;
+    
+    if (finalScore >= previousAverage) {
+      // Gained/Improved: (Current Score - Average Score) * 3
+      ratingChange = Math.round((finalScore - previousAverage) * 3);
+    } else {
+      // Decreased/Worse: (Average Score - Current Score) * 2
+      ratingChange = -Math.round((previousAverage - finalScore) * 2);
+    }
+    
+    const newRating = currentRating + ratingChange;
+
+    // Save to history array
+    user.interviewHistory.push({
+      score: finalScore,
+      ratingChange: ratingChange,
+      newRating: newRating,
+      date: new Date()
+    });
+
+    user.interviewRating = newRating;
+    await user.save();
+
+    res.status(200).json({ 
+      message: "Interview rated and saved successfully!", 
+      newRating,
+      ratingChange,
+      history: user.interviewHistory 
+    });
+
+  } catch (error) {
+    console.error("🔥 BACKEND CRASH REASON (Save Score):", error);
+    res.status(500).json({ message: "Server error saving score.", error: error.message });
+  }
+};
+
+// Export BOTH controllers
+module.exports = { 
+  generateInterviewQuestions, 
+  saveInterviewScore 
+};

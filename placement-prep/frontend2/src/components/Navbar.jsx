@@ -5,7 +5,7 @@ export default function Navbar() {
   const location = useLocation();
 
   // Hide navbar during the actual interview so it doesn't distract
-  if (location.pathname === '/interview') return null;
+  if (location.pathname === '/interview/active') return null;
 
   return (
     <nav style={{ 

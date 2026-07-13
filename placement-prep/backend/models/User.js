@@ -31,6 +31,19 @@ const userSchema = new mongoose.Schema({
   type: Object,
   default: {},
 },
+// Add these fields inside your userSchema in User.js
+  interviewRating: {
+    type: Number,
+    default: 1200, // Standard starting rating (like Codeforces)
+  },
+  interviewHistory: [
+    {
+      date: { type: Date, default: Date.now },
+      score: { type: Number, required: true },
+      ratingChange: { type: Number },
+      newRating: { type: Number },
+    }
+  ],
 
 }, { timestamps: true });
 
