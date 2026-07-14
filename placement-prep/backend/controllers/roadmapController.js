@@ -1,6 +1,6 @@
 const { GoogleGenAI } = require('@google/genai');
 const Roadmap = require('../models/Roadmap');
-const Resume = require('../models/Resume');
+const Resume = require('../models/resume');
 const InterviewSession = require('../models/InterviewSession');
 const calculateTopicScores = require('../utils/scoreCalculator');
 
