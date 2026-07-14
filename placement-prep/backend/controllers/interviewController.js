@@ -1,5 +1,5 @@
 const { GoogleGenAI } = require('@google/genai');
-const Resume = require('../models/resume');
+const Resume = require('../models/Resume');
 const User = require('../models/User'); // Added User model for saving scores
 const calculateTopicScores = require('../utils/scoreCalculator');
 
