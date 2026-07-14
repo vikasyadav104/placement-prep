@@ -23,6 +23,7 @@ const callGeminiWithRetry = async (prompt, retries = 2) => {
 };
 
 // @route  POST /api/interview/submit-session
+// @route  POST /api/interview/submit-session
 const submitInterviewSession = async (req, res) => {
   try {
     const { questions } = req.body;
@@ -31,7 +32,7 @@ const submitInterviewSession = async (req, res) => {
       return res.status(400).json({ message: 'Questions and answers are required' });
     }
 
-    // Use the exact 'questions' variable that came from the frontend
+    // Tightened prompt instructing Gemini to strictly use escaped line breaks
     const prompt = `
       You are an expert technical interviewer evaluating a candidate for an SDE role.
       Here are the questions asked and the candidate's transcribed audio answers:
@@ -51,14 +52,22 @@ const submitInterviewSession = async (req, res) => {
           }
         ]
       }
+
+      CRITICAL JSON RULE: Do NOT use raw line breaks, newlines, or tabs inside the JSON string values. 
+      If you need to format a paragraph break or list inside "critique" or "idealResponse", you MUST use the escaped text literal "\\n" instead of an actual Enter key press.
     `;
 
     let responseText = await callGeminiWithRetry(prompt);
     
-    // Safely strip any markdown backticks if Gemini includes them
-    responseText = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    // 1. Safely strip any markdown code blocks Gemini might include
+    let cleanedText = responseText.replace(/```json/gi, '').replace(/```/gi, '').trim();
     
-    const evaluationJSON = JSON.parse(responseText);
+    // 2. Clear out all unescaped control characters (newlines, tabs, carriage returns) 
+    // This safely minifies the JSON string so JSON.parse() won't crash.
+    cleanedText = cleanedText.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+
+    // 3. Parse the safely sanitized JSON text
+    const evaluationJSON = JSON.parse(cleanedText);
 
     // Save the newly structured data to MongoDB
     const session = await InterviewSession.create({

@@ -1,7 +1,6 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; // <-- Added Navigate here
 import { AuthProvider } from './context/AuthContext';
-import Navbar from './components/Navbar';
-import Home from './pages/Home';
+
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -15,12 +14,19 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <Navbar />
         <Routes>
-          <Route path="/" element={<Home />} />
+          
+          {/* ========================================== */}
+          {/* THIS IS THE NEW REDIRECT LINE              */}
+          {/* Automatically sends anyone visiting "/" directly to "/login" */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* ========================================== */}
+
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          
+          <Route path="/dashboard" element={<Dashboard />} /> 
+          
           <Route path="/resume" element={<Resume />} />
           <Route path="/roadmap" element={<Roadmap />} />
           <Route path="/interview/active" element={<ActiveInterview />} />
