@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const protect = require('../middleware/temp');
+const protect = require('../middleware/AuthMiddleware');
 
 // Import BOTH of your controllers now
 const { syncProfiles, getUserProfile } = require('../controllers/userController');
