@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { generateInterviewQuestions, saveInterviewScore} = require('../controllers/interviewController');
 const protect = require('../middleware/AuthMiddleware');
-const { submitInterviewSession, getInterviewHistory } = require('../controllers/interviewSessionController');
+const { submitInterviewSession, getInterviewHistory } = require('../controllers/temp');
 
 router.post('/generate-questions', protect, generateInterviewQuestions);
 router.post('/save-score', protect, saveInterviewScore);
