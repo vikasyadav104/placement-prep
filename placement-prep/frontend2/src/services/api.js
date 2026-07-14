@@ -2,9 +2,8 @@ import axios from 'axios';
 
 // 1. We create our custom mail carrier and give him a default map
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api'
+  baseURL: 'https://placement-prep-3-pefu.onrender.com/api' 
 });
-
 // 2. We put a security guard at the door before the mail carrier leaves
 api.interceptors.request.use((config) => {
   // Reach into the browser's secret backpack
