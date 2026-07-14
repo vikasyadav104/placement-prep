@@ -1,6 +1,6 @@
 const fs = require('fs');
 const pdfParse = require('pdf-parse');
-const Resume = require('../models/Resume');
+const Resume = require('../models/temp');
 
 const uploadResume = async (req, res) => {
   try {
