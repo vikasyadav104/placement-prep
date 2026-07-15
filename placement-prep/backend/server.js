@@ -15,6 +15,11 @@ const interviewRoutes = require('./routes/interviewRoutes');
 const userRoutes = require('./routes/userRoutes');
 const aiInterviewRoutes = require('./routes/aiInterviewRoutes');
 console.log('Gemini key loaded:', process.env.GEMINI_API_KEY ? 'Yes' : 'No');
+const fs = require('fs');
+
+if (!fs.existsSync('./uploads')) {
+    fs.mkdirSync('./uploads');
+}
 connectDB(); // i use here mongodb atlas
 
 const app = express();
