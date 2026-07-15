@@ -4,7 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import Resume from './pages/Resume';
+import Resume from './pages/temp';
 import Roadmap from './pages/Roadmap';
 import ActiveInterview from './pages/ActiveInterview';
 import InterviewSummary from './pages/InterviewSummary';
